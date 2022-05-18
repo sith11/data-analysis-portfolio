@@ -1,0 +1,124 @@
+-- desc
+
+use schema spotify_data.public;
+
+create or replace stage datastage_spotify
+  url= 's3://zawarudo/'
+  credentials=(aws_key_id='AKIA***************' aws_secret_key='jvnx***********************')
+  encryption=(type='AWS_SSE_KMS' kms_key_id = 'aws/key');
+  
+create table spotify_raw_data(
+
+    json_text variant
+
+)
+
+-- Creating a data pipeline b/w Snowflake and AWS Kinesis Delivery Stream
+
+create pipe spotify_dataPipeline auto_ingest=true as 
+    copy into spotify_raw_data
+    from @datastage_spotify
+    file_format = (type = 'JSON')
+    
+select count(*) from spotify_raw_data
+
+-- Parse JSON Data into columns and cast values appropriately
+-- Create view to access cleaned data
+
+create view cleaned_spotify_data as 
+    select
+        json_text:ID::varchar as ID, 
+        json_text:Track::varchar as Track_Name,
+        json_text:Artist::varchar as Artist,
+        json_text:Year::integer as Year,
+        json_text:Danceability::varchar as Danceability,
+        json_text:Popularity::integer as Popularity,
+        json_text:Liveness::float as Liveness,
+        json_text:Valence::float as Valence,
+        json_text:Speech::float as Speech,
+        json_text:Instrumentalness::float as Instrumentalness,
+        json_text:Tempo::float as Tempo,
+        json_text:Acoustic::float as Acoustic,
+        json_text:Energy::float as Energy,
+        json_text:Duration::integer as Duration,
+        json_text:Key::integer as Key
+
+    from spotify_raw_data
+    
+select * from cleaned_spotify_data
+
+
+-- Assorted data wrangling using SQL to display querying knowledge (not incl in Tableau Visualisation)
+
+-- Average values of audio features across the years
+
+select year, avg(s.danceability) as danceability, avg(s.liveness) as liveness, avg(s.valence) as valence, avg(s.speech) as speech, avg(s.instrumentalness) as instrumentalness, avg(s.tempo) as tempo, 
+avg(s.energy) as energy, avg(s.acoustic) as acoustic, avg(s.duration) as duration, 
+avg(s.popularity) as popularity
+
+from cleaned_spotify_data s 
+where s.year = 2019
+group by 1
+
+union
+
+(select year, avg(s.danceability) as danceability, avg(s.liveness) as liveness, avg(s.valence) as valence, avg(s.speech) as speech, avg(s.instrumentalness) as instrumentalness, avg(s.tempo) as tempo, 
+avg(s.energy) as energy, avg(s.acoustic) as acoustic, avg(s.duration) as duration, 
+avg(s.popularity) as popularity
+
+from cleaned_spotify_data s 
+where s.year = 2020
+group by 1)
+
+union
+
+(select year, avg(s.danceability) as danceability, avg(s.liveness) as liveness, avg(s.valence) as valence, avg(s.speech) as speech, avg(s.instrumentalness) as instrumentalness, avg(s.tempo) as tempo, 
+avg(s.energy) as energy, avg(s.acoustic) as acoustic, avg(s.duration) as duration, 
+avg(s.popularity) as popularity
+
+from cleaned_spotify_data s 
+where s.year = 2021
+group by 1)
+
+-- Find most featured artist in a given year
+
+select year, artist, count(*) as Frequency
+from cleaned_spotify_data
+where year = 2019
+group by 1,2
+order by count(*) desc
+limit 3
+
+union
+
+select year, artist, count(*) as Frequency
+from cleaned_spotify_data
+where year = 2020
+group by 1,2
+order by count(*) desc
+limit 3
+
+union
+ 
+select year, artist, count(*) as Frequency
+from cleaned_spotify_data
+where year = 2021
+group by 1,2
+order by count(*) desc
+limit 3
+
+select artist, popularity from cleaned_spotify_data
+where popularity = (select max(popularity) from cleaned_spotify_data)
+
+select avg(danceability)*100 as avg_danceability
+from cleaned_spotify_data
+where year = 2019
+
+select track_name, artist, danceability*100 as DANCEABILITY,
+    case 
+    when (danceability)*100 > 69.445 then 'Above Average' 
+    when (danceability)*100 < 69.445 then 'Below Average'
+    else 'Average' end as Danceability_Rating
+    from cleaned_spotify_data
+    where year = 2019
+    limit 10
