@@ -6,7 +6,7 @@ Currently, I have two projects highlighting my coding skills in **Python** and *
 
 **PREPARATION**
 
-1. The world happiness and fertility rates project is a combination of data sourced from Kaggle (source - https://www.kaggle.com/datasets/unsdsn/world-happiness ) and      publicly available UN data These were then imported onto snowflake and prepared for final analysis on Tableau.
+1. The world happiness and fertility rates project is a combination of data sourced from Kaggle (source - https://www.kaggle.com/datasets/unsdsn/world-happiness ) and      publicly available UN data. These were then imported onto snowflake and prepared for final analysis on Tableau.
 
 2. The Spotify data was collected directly through querying their API via a Python Script. The resulting JSON was then directly sent to AWS kinesis data streams (via the    Python Script) which sent the data through AWS kinesis firehose delivery stream straight to a table in Snowflake via a data pipeline that I had configured in both        these technologies. The next step involved handling raw JSON data and splitting it into meaningful columns before exporting it for analysis onto Tableau.
 
