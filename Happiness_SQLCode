@@ -1,0 +1,98 @@
+create fertility_2015(
+     
+    Country varchar(100),
+    Country_Code varchar(5),
+    Year integer ,
+    Indicator_Name varchar(50),
+    Fertility_Rate decimal(9,7)
+
+)
+
+create table fertility_2016(
+
+    Country varchar(100),
+    Country_Code varchar(5),
+    Year integer ,
+    Indicator_Name varchar(50),
+    Fertility_Rate decimal(9,7)
+
+)
+
+create table fertility_2017(
+
+    Country varchar(100),
+    Country_Code varchar(5),
+    Year integer ,
+    Indicator_Name varchar(50),
+    Fertility_Rate decimal(9,7)
+
+)
+
+-- Removing rows with null values 
+delete 
+from fertility_2015
+where fertility_rate is null
+
+delete 
+from fertility_2016
+where fertility_rate is null
+
+delete 
+from fertility_2017
+where fertility_rate is null
+
+
+select count(*)
+from fertility_2015
+
+create table all_years_fertility (
+    
+    Country varchar(100),
+    Country_Code varchar(5),
+    Year integer ,
+    Indicator_Name varchar(50),
+    Fertility_Rate decimal(9,7)
+    
+)
+
+insert into all_years_fertility
+
+select *
+from fertility_2015
+
+union
+
+select *
+from fertility_2016
+
+union
+
+select *
+from fertility_2017
+
+create view final_data_fertility as
+
+    select transit_table_2.country, transit_table_2.country_code, af.year, af.indicator_name, af.fertility_rate 
+    from (
+        select distinct a.country, a.country_code 
+        from fertility_2015 a 
+        inner join fertility_2016 b
+        on a.country = b.country and a.country_code = b.country_code
+        inner join fertility_2017 c 
+        on a.country = c.country and a.country_code = c.country_code ) transit_table_2
+
+        left join all_years_fertility af
+        on af.country = transit_table_2.country and af.country_code = transit_table_2.country_code
+     
+
+create view happiness_fertility as
+
+    select fd.year, fd.country, fd.region, fd.happy_rank, fd.happy_score, fd.economy, fd.family, fd.health,
+    fd.freedom, fd.trust, fd.generosity, fdf.fertility_rate
+    from final_data fd
+    inner join final_data_fertility fdf
+    on fd.country = fdf.country and fd.year = fdf.year
+    
+
+select *
+from happiness_fertility
