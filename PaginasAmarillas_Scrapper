@@ -1,0 +1,141 @@
+#Import essential libraries
+from bs4 import BeautifulSoup 
+import pandas as pd
+import time
+from bs4 import NavigableString
+import requests
+import pickle
+import os
+import re
+startTime = time.time()
+
+name = []
+add = []
+postal = []
+city = []
+tel = []
+links = []
+
+# Retrieve available links from paginas amarillas
+for num in range(1,473+1):
+
+    url = f'https://www.paginasamarillas.es/search/estudio-arquitectura/all-ma/all-pr/all-is/all-ci/all-ba/all-pu/all-nc/{num}?what=estudio+arquitectura&qc=true'
+    headers = {'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/67.0.3396.87 Safari/537.36'}
+    resp = requests.get(url, headers=headers, timeout=15)
+    soup = BeautifulSoup(resp.content, 'html.parser')
+    
+    for item in soup.find_all("div", {"class": "col-xs-5"}):
+        for i in item.find_all('a'):
+            href = i.get('href')
+            links.append(href)
+
+    print(len(links))
+
+df = pd.DataFrame({
+    
+    "Links": links
+    
+    })
+
+file = r'C:\Users\WL-133\Desktop\PA_Archi_URLs.xlsx'
+df.to_excel(file, index=False)
+
+exec_time = (time.time() - startTime)
+print("Exec Time in seconds: " + str(exec_time))
+
+# Use serialisation to write scraped records into a csv file and resume scrapping process from the last index 
+# in the event the scrapper gets interrupted due to connectivity issues, or website detecting and blocking the scrapper
+
+class Pickle:
+    
+    def __init__(self, urls):
+        
+        self.name = []
+        self.add = []
+        self.postal = []
+        self.city = []
+        self.tel = []
+        self.urls = urls
+        self.position = 0
+        
+    def get_info(self):
+
+        for num, url in enumerate(self.urls[self.position::], start=self.position + 1):
+            
+            headers = {'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/67.0.3396.87 Safari/537.36'}
+            resp = requests.get(str(url), headers=headers, timeout= 100)
+            soup = BeautifulSoup(resp.content, 'html.parser')
+            
+            try:
+                a = soup.find('span', {'itemprop': 'telephone'})
+                self.tel.append(a.get_text())
+                
+            except:
+                self.tel.append('Not Found')
+            
+            try:
+                b = soup.find('span', {'itemprop': 'streetAddress'})
+                self.add.append(b.get_text())
+            
+            except:
+                self.add.append('Not Found')
+            
+            try:
+                c = soup.find('span', {'itemprop': 'postalCode'})
+                self.postal.append(c.get_text())
+            
+            except:
+                self.postal.append('Not Found')
+            
+            try:
+                d = soup.find('span', {'itemprop': 'addressLocality'})
+                self.city.append(d.get_text())
+                
+            except:
+                self.city.append('Not Found')
+            
+            try:
+                e = soup.find('h1', {'itemprop': 'name'})
+                self.name.append(e.get_text())
+            
+            except:
+                self.name.append('Not Found')
+            
+            print("{}".format(num))
+            self.position += 1
+            time.sleep(3)
+            
+    def write_to_file(self,file_path):
+    
+        df = pd.DataFrame({
+            
+            "Company": self.name,
+            "Address__c": self.add,
+            "Zipcode__c": self.postal,
+            "City": self.city,
+            "Phone": self.tel
+            
+            })
+        
+        df.to_excel(file_path)
+        
+#--------------------------------------------------------------------------------------------------
+file = r'C:\Users\WL-133\Desktop\PA_Archi_URLs.xlsx'
+df = pd.read_excel(file)
+urls = df['URL'].astype(str).to_list()
+
+if os.path.exists('pickle_rick_PA_B.pickle'):
+    pickle_rick = pickle.load(open('pickle_rick_PA_B.pickle', 'rb'))
+else:
+    pickle_rick = Pickle(urls)
+
+try:
+    pickle_rick.get_info()
+    pickle_rick.write_to_file(r'C:\Users\WL-133\Desktop\PA_Archi_3.xlsx')
+
+except (Exception, BaseException) as e:
+    print(e)
+    pickle.dump(pickle_rick, open('pickle_rick_PA_B.pickle', 'wb'))
+
+exec_time = (time.time() - startTime)
+print("Execution time " + str(exec_time) + " seconds")
